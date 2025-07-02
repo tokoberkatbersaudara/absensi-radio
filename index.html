@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Absensi Announcer Radio</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="bg-white p-6 rounded-xl shadow-md w-full max-w-md text-center">
+    <h1 class="text-2xl font-bold mb-4">Absensi Announcer Radio</h1>
+    <p id="datetime" class="mb-4 text-lg text-gray-700"></p>
+    <input type="text" id="namaAnnouncer" placeholder="Masukkan Nama Anda" class="border rounded px-4 py-2 mb-4 w-full" />
+    <button id="absenMasuk" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded w-full mb-2">Absen Masuk</button>
+    <button id="absenPulang" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded w-full">Absen Pulang</button>
+  </div>
+
+  <!-- Notifikasi -->
+  <div id="notification" class="fixed top-4 right-4 px-4 py-2 rounded shadow-md hidden"></div>
+
+  <!-- Script -->
+  <script src="script.js"></script>
+</body>
+</html>

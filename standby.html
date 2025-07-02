@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Standby Jam Kerja</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</head>
+<body class="bg-black text-white flex flex-col items-center justify-center min-h-screen space-y-6">
+
+    <h1 class="text-2xl text-center">Anda sudah absen masuk, Selamat Siaran.</h1>
+    <div id="jam" class="text-6xl font-mono"></div>
+
+    <input type="text" id="namaAnnouncer" placeholder="Nama Anda" class="border rounded px-4 py-2 text-black w-64 text-center" readonly />
+
+    <button id="absenPulang" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded">
+        Absen Pulang
+    </button>
+
+    <!-- Notifikasi -->
+    <div id="notification" class="fixed top-4 right-4 px-4 py-2 rounded shadow-md hidden"></div>
+
+    <script>
+        // Jam realtime
+        function updateClock() {
+            const now = new Date();
+            const jam = now.toLocaleTimeString('id-ID', { hour12: false });
+            document.getElementById('jam').innerText = jam;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Konfigurasi Supabase
+        const supabaseUrl = 'https://nsbbipgztnqhyucftjjt.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYmJpcGd6dG5xaHl1Y2Z0amp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NTc5ODUsImV4cCI6MjA2NzAzMzk4NX0.74lnjRTG28EYbf6ui8mnBksJVL9BU3C8sXOYbl-m-tU';
+        const client = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Notifikasi
+        function showNotification(message, success = true) {
+            const notif = document.getElementById('notification');
+            notif.innerText = message;
+            notif.className = `fixed top-4 right-4 px-4 py-2 rounded shadow-md text-white ${success ? 'bg-green-500' : 'bg-red-500'}`;
+            notif.style.display = 'block';
+            setTimeout(() => {
+                notif.style.display = 'none';
+            }, 2000);
+        }
+
+        // Load nama dari localStorage dan kunci input
+        const namaInput = document.getElementById('namaAnnouncer');
+        const storedName = localStorage.getItem('announcerName');
+
+        if (storedName) {
+            namaInput.value = storedName;
+            namaInput.readOnly = true;
+        } else {
+            namaInput.value = '';
+            namaInput.readOnly = true;
+            showNotification('Nama tidak ditemukan. Silakan absen masuk dulu.', false);
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 3000);
+        }
+
+        // Absen Pulang
+        document.getElementById('absenPulang').addEventListener('click', async () => {
+            const nama = namaInput.value.trim();
+            if (!nama) {
+                showNotification('Nama tidak ditemukan, tidak dapat absen pulang.', false);
+                return;
+            }
+
+            const tanggalHariIni = new Date().toISOString().split('T')[0];
+            const jamSekarang = new Date().toLocaleTimeString('en-GB', { hour12: false });
+
+            const { error } = await client
+                .from('absensi_announcer')
+                .update({
+                    jam_keluar: jamSekarang,
+                    catatan: 'Absen Pulang'
+                })
+                .eq('nama', nama)
+                .eq('tanggal', tanggalHariIni);
+
+            if (error) {
+                console.error('Supabase Error:', error);
+                showNotification('Gagal absen pulang: ' + error.message, false);
+            } else {
+                showNotification('Absen Pulang berhasil!');
+                setTimeout(() => {
+                    localStorage.removeItem('announcerName');
+                    window.location.href = 'index.html';
+                }, 2000);
+            }
+        });
+    </script>
+</body>
+</html>
