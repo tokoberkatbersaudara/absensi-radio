@@ -1,36 +1,46 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Rekap Absensi Announcer</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rekap Absensi Announcer</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-4">
-    <h1 class="text-2xl font-bold mb-4 text-center">Rekap Absensi Announcer + Hitung Honor</h1>
-    <div class="overflow-x-auto">
-        <table class="min-w-full bg-white rounded shadow" id="rekapTable">
-            <thead class="bg-gray-200">
-                <tr>
-                    <th class="px-4 py-2">Nama</th>
-                    <th class="px-4 py-2">Tanggal</th>
-                    <th class="px-4 py-2">Jam Masuk</th>
-                    <th class="px-4 py-2">Jam Pulang</th>
-                    <th class="px-4 py-2">Durasi (Jam)</th>
-                    <th class="px-4 py-2">Honor</th>
-                </tr>
-            </thead>
-            <tbody id="rekapBody"></tbody>
-            <tfoot>
-                <tr class="bg-gray-200 font-bold">
-                    <td colspan="5" class="px-4 py-2 text-right">Total Honor</td>
-                    <td class="px-4 py-2" id="totalHonor">Rp 0</td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
+  <h1 class="text-2xl font-bold mb-4 text-center">Rekap Absensi Announcer + Hitung Honor</h1>
 
-    <script src="admin.js"></script>
+  <!-- Kolom pencarian -->
+  <div class="mb-4 text-center">
+    <input type="text" id="searchInput" placeholder="Cari nama atau tanggal..." class="border rounded px-4 py-2 w-64">
+    <button id="exportBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded ml-2">
+      Export ke Excel
+    </button>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="min-w-full bg-white rounded shadow" id="rekapTable">
+      <thead class="bg-gray-200">
+        <tr>
+          <th class="px-4 py-2">Nama</th>
+          <th class="px-4 py-2">Tanggal</th>
+          <th class="px-4 py-2">Jam Masuk</th>
+          <th class="px-4 py-2">Jam Pulang</th>
+          <th class="px-4 py-2">Durasi (Jam)</th>
+          <th class="px-4 py-2">Honor</th>
+        </tr>
+      </thead>
+      <tbody id="rekapBody"></tbody>
+      <tfoot>
+        <tr class="bg-gray-200 font-bold">
+          <td colspan="5" class="px-4 py-2 text-right">Total Honor</td>
+          <td class="px-4 py-2" id="totalHonor">Rp 0</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <script src="admin.js"></script>
 </body>
 </html>
