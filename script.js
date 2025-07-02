@@ -33,6 +33,10 @@ async function loadAnnouncerList() {
         showNotification('Gagal memuat daftar announcer.', false);
         return;
     }
+    if (data.length === 0) {
+        showNotification('Belum ada announcer terdaftar.', false);
+        return;
+    }
     data.forEach(item => {
         const option = document.createElement('option');
         option.value = item.nama;
