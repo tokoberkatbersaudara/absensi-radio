@@ -7,10 +7,11 @@ const rekapBody = document.getElementById('rekapBody');
 const totalHonorEl = document.getElementById('totalHonor');
 const searchInput = document.getElementById('searchInput');
 const exportBtn = document.getElementById('exportBtn');
+const monthFilter = document.getElementById('monthFilter');
 
-let allData = []; // untuk penyimpanan data global agar search dan export berjalan stabil
+let allData = [];
 
-// Fungsi untuk fetch data
+// Fetch data dari Supabase
 async function fetchData() {
     const { data, error } = await client.from('absensi_announcer').select('*').order('tanggal', { ascending: false });
     if (error) {
@@ -18,10 +19,10 @@ async function fetchData() {
         return;
     }
     allData = data;
-    displayData(data);
+    applyFilters();
 }
 
-// Fungsi hitung durasi
+// Hitung durasi jam siaran
 function calculateDuration(jamMasuk, jamKeluar) {
     if (!jamMasuk || !jamKeluar) return 0;
     const [h1, m1, s1] = jamMasuk.split(':').map(Number);
@@ -32,7 +33,7 @@ function calculateDuration(jamMasuk, jamKeluar) {
     return diff > 0 ? (diff / 3600).toFixed(2) : 0;
 }
 
-// Fungsi untuk display data
+// Tampilkan data ke tabel
 function displayData(data) {
     rekapBody.innerHTML = '';
     let totalHonor = 0;
@@ -57,35 +58,32 @@ function displayData(data) {
     totalHonorEl.innerText = `Rp ${totalHonor.toLocaleString('id-ID')}`;
 }
 
-// Event filter pencarian
-searchInput.addEventListener('input', () => {
+// Filter nama/tanggal dan filter bulan
+function applyFilters() {
     const keyword = searchInput.value.toLowerCase();
-    const filtered = allData.filter(row =>
-        row.nama.toLowerCase().includes(keyword) ||
-        row.tanggal.toLowerCase().includes(keyword)
-    );
-    displayData(filtered);
-});
+    const monthValue = monthFilter.value; // yyyy-mm
 
-// Event Export ke Excel
+    const filtered = allData.filter(row => {
+        const matchKeyword =
+            row.nama.toLowerCase().includes(keyword) ||
+            row.tanggal.toLowerCase().includes(keyword);
+        const matchMonth =
+            !monthValue || row.tanggal.startsWith(monthValue);
+        return matchKeyword && matchMonth;
+    });
+
+    displayData(filtered);
+}
+
+// Event listeners
+searchInput.addEventListener('input', applyFilters);
+monthFilter.addEventListener('change', applyFilters);
+
 exportBtn.addEventListener('click', () => {
-    if (allData.length === 0) {
-        alert('Tidak ada data untuk diexport.');
-        return;
-    }
-    const exportData = allData.map(row => ({
-        Nama: row.nama,
-        Tanggal: row.tanggal,
-        'Jam Masuk': row.jam_masuk,
-        'Jam Pulang': row.jam_keluar,
-        'Durasi (Jam)': calculateDuration(row.jam_masuk, row.jam_keluar),
-        Honor: 'Rp ' + (calculateDuration(row.jam_masuk, row.jam_keluar) > 0 ? '10.000' : '0')
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Absensi");
+    const table = document.getElementById('rekapTable');
+    const workbook = XLSX.utils.table_to_book(table, { sheet: "Rekap Absensi" });
     XLSX.writeFile(workbook, "Rekap_Absensi_Announcer.xlsx");
 });
 
-// Load data saat halaman dibuka
+// Jalankan pertama kali
 fetchData();

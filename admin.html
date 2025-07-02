@@ -11,10 +11,11 @@
 <body class="bg-gray-100 min-h-screen p-4">
   <h1 class="text-2xl font-bold mb-4 text-center">Rekap Absensi Announcer + Hitung Honor</h1>
 
-  <!-- Kolom pencarian -->
-  <div class="mb-4 text-center">
+  <!-- Filter Bulan dan Search -->
+  <div class="mb-4 flex flex-wrap justify-center gap-2">
+    <input type="month" id="monthFilter" class="border rounded px-4 py-2" />
     <input type="text" id="searchInput" placeholder="Cari nama atau tanggal..." class="border rounded px-4 py-2 w-64">
-    <button id="exportBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded ml-2">
+    <button id="exportBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
       Export ke Excel
     </button>
   </div>
