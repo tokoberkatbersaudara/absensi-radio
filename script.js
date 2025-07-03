@@ -8,7 +8,8 @@ setInterval(() => {
     const now = new Date();
     const datetimeEl = document.getElementById('datetime');
     if (datetimeEl) {
-        datetimeEl.innerText = now.toLocaleString();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day:'numeric' };
+        datetimeEl.innerText = now.toLocaleString('id-ID', options);
     }
 }, 1000);
 
