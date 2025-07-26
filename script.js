@@ -3,28 +3,26 @@ const supabaseUrl = 'https://nsbbipgztnqhyucftjjt.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYmJpcGd6dG5xaHl1Y2Z0amp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NTc5ODUsImV4cCI6MjA2NzAzMzk4NX0.74lnjRTG28EYbf6ui8mnBksJVL9BU3C8sXOYbl-m-tU';
 const client = supabase.createClient(supabaseUrl, supabaseKey);
 
-// Fungsi ambil tanggal hari ini (lokal)
+// Fungsi untuk ambil tanggal lokal dari komputer user
 function getLocalTanggalHariIni() {
     const now = new Date();
-    return now.toISOString().split('T')[0]; // yyyy-mm-dd
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
 }
 
-// Fungsi ambil jam saat ini (lokal)
-function getJamLokalSekarang() {
-    return new Date().toLocaleTimeString('en-GB', { hour12: false }); // HH:MM:SS
-}
-
-// Tampilkan tanggal hari ini dalam format Indonesia
+// Update waktu realtime di layar
 setInterval(() => {
     const now = new Date();
     const datetimeEl = document.getElementById('datetime');
     if (datetimeEl) {
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        datetimeEl.innerText = now.toLocaleDateString('id-ID', options);
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day:'numeric' };
+        datetimeEl.innerText = now.toLocaleString('id-ID', options);
     }
 }, 1000);
 
-// Notifikasi pop-up
+// Fungsi notifikasi
 function showNotification(message, success = true) {
     const notif = document.getElementById('notification');
     if (!notif) return;
@@ -36,7 +34,7 @@ function showNotification(message, success = true) {
     }, 3000);
 }
 
-// Load daftar announcer ke dropdown
+// Load dropdown announcer dari Supabase
 async function loadAnnouncerList() {
     const { data, error } = await client.from('announcer').select('nama').order('nama', { ascending: true });
     const select = document.getElementById('namaAnnouncer');
@@ -57,7 +55,7 @@ async function loadAnnouncerList() {
     });
 }
 
-// Tombol Absen Masuk
+// Fungsi Absen Masuk
 document.getElementById('absenMasuk').addEventListener('click', async () => {
     const nama = document.getElementById('namaAnnouncer').value;
     if (!nama) {
@@ -66,7 +64,7 @@ document.getElementById('absenMasuk').addEventListener('click', async () => {
     }
 
     const tanggalHariIni = getLocalTanggalHariIni();
-    const jamSekarang = getJamLokalSekarang();
+    const jamSekarang = new Date().toLocaleTimeString('en-GB', { hour12: false });
 
     const { error } = await client.from('absensi_announcer').insert({
         nama: nama,
@@ -87,7 +85,7 @@ document.getElementById('absenMasuk').addEventListener('click', async () => {
     }
 });
 
-// Tombol Absen Pulang
+// Fungsi Absen Pulang
 document.getElementById('absenPulang').addEventListener('click', async () => {
     const nama = document.getElementById('namaAnnouncer').value || localStorage.getItem('announcerName');
     if (!nama) {
@@ -96,7 +94,7 @@ document.getElementById('absenPulang').addEventListener('click', async () => {
     }
 
     const tanggalHariIni = getLocalTanggalHariIni();
-    const jamSekarang = getJamLokalSekarang();
+    const jamSekarang = new Date().toLocaleTimeString('en-GB', { hour12: false });
 
     const { error } = await client
         .from('absensi_announcer')
@@ -119,5 +117,5 @@ document.getElementById('absenPulang').addEventListener('click', async () => {
     }
 });
 
-// Jalankan saat halaman dibuka
+// Jalankan saat halaman load
 loadAnnouncerList();
