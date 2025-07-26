@@ -3,6 +3,14 @@ const supabaseUrl = 'https://nsbbipgztnqhyucftjjt.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYmJpcGd6dG5xaHl1Y2Z0amp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NTc5ODUsImV4cCI6MjA2NzAzMzk4NX0.74lnjRTG28EYbf6ui8mnBksJVL9BU3C8sXOYbl-m-tU';
 const client = supabase.createClient(supabaseUrl, supabaseKey);
 
+// Fungsi untuk mengambil tanggal lokal WITA
+function getLocalTanggalWITA() {
+    const now = new Date();
+    const offset = 8 * 60; // WITA GMT+8
+    const localTime = new Date(now.getTime() + (offset - now.getTimezoneOffset()) * 60000);
+    return localTime.toISOString().split('T')[0];
+}
+
 // Update waktu realtime
 setInterval(() => {
     const now = new Date();
@@ -54,7 +62,7 @@ document.getElementById('absenMasuk').addEventListener('click', async () => {
         return;
     }
 
-    const tanggalHariIni = new Date().toISOString().split('T')[0];
+    const tanggalHariIni = getLocalTanggalWITA();
     const jamSekarang = new Date().toLocaleTimeString('en-GB', { hour12: false });
 
     const { error } = await client.from('absensi_announcer').insert({
@@ -84,7 +92,7 @@ document.getElementById('absenPulang').addEventListener('click', async () => {
         return;
     }
 
-    const tanggalHariIni = new Date().toISOString().split('T')[0];
+    const tanggalHariIni = getLocalTanggalWITA();
     const jamSekarang = new Date().toLocaleTimeString('en-GB', { hour12: false });
 
     const { error } = await client
