@@ -3,35 +3,28 @@ const supabaseUrl = 'https://nsbbipgztnqhyucftjjt.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYmJpcGd6dG5xaHl1Y2Z0amp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NTc5ODUsImV4cCI6MjA2NzAzMzk4NX0.74lnjRTG28EYbf6ui8mnBksJVL9BU3C8sXOYbl-m-tU';
 const client = supabase.createClient(supabaseUrl, supabaseKey);
 
-// Fungsi untuk ambil tanggal lokal WITA
-function getLocalTanggalWITA() {
+// Fungsi ambil tanggal hari ini (lokal)
+function getLocalTanggalHariIni() {
     const now = new Date();
-    const offset = 8 * 60; // WITA GMT+8
-    const localTime = new Date(now.getTime() + (offset - now.getTimezoneOffset()) * 60000);
-    return localTime.toISOString().split('T')[0]; // YYYY-MM-DD
+    return now.toISOString().split('T')[0]; // yyyy-mm-dd
 }
 
-// Fungsi untuk ambil jam lokal WITA
-function getLocalJamWITA() {
-    const now = new Date();
-    const offset = 8 * 60; // WITA GMT+8
-    const localTime = new Date(now.getTime() + (offset - now.getTimezoneOffset()) * 60000);
-    return localTime.toTimeString().split(' ')[0]; // HH:MM:SS
+// Fungsi ambil jam saat ini (lokal)
+function getJamLokalSekarang() {
+    return new Date().toLocaleTimeString('en-GB', { hour12: false }); // HH:MM:SS
 }
 
-// Update realtime tampilan tanggal di halaman
+// Tampilkan tanggal hari ini dalam format Indonesia
 setInterval(() => {
     const now = new Date();
     const datetimeEl = document.getElementById('datetime');
     if (datetimeEl) {
-        const offset = 8 * 60;
-        const localTime = new Date(now.getTime() + (offset - now.getTimezoneOffset()) * 60000);
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        datetimeEl.innerText = localTime.toLocaleString('id-ID', options);
+        datetimeEl.innerText = now.toLocaleDateString('id-ID', options);
     }
 }, 1000);
 
-// Notifikasi UI
+// Notifikasi pop-up
 function showNotification(message, success = true) {
     const notif = document.getElementById('notification');
     if (!notif) return;
@@ -43,7 +36,7 @@ function showNotification(message, success = true) {
     }, 3000);
 }
 
-// Load list announcer ke dropdown
+// Load daftar announcer ke dropdown
 async function loadAnnouncerList() {
     const { data, error } = await client.from('announcer').select('nama').order('nama', { ascending: true });
     const select = document.getElementById('namaAnnouncer');
@@ -64,7 +57,7 @@ async function loadAnnouncerList() {
     });
 }
 
-// Absen Masuk
+// Tombol Absen Masuk
 document.getElementById('absenMasuk').addEventListener('click', async () => {
     const nama = document.getElementById('namaAnnouncer').value;
     if (!nama) {
@@ -72,8 +65,8 @@ document.getElementById('absenMasuk').addEventListener('click', async () => {
         return;
     }
 
-    const tanggalHariIni = getLocalTanggalWITA();
-    const jamSekarang = getLocalJamWITA();
+    const tanggalHariIni = getLocalTanggalHariIni();
+    const jamSekarang = getJamLokalSekarang();
 
     const { error } = await client.from('absensi_announcer').insert({
         nama: nama,
@@ -94,7 +87,7 @@ document.getElementById('absenMasuk').addEventListener('click', async () => {
     }
 });
 
-// Absen Pulang
+// Tombol Absen Pulang
 document.getElementById('absenPulang').addEventListener('click', async () => {
     const nama = document.getElementById('namaAnnouncer').value || localStorage.getItem('announcerName');
     if (!nama) {
@@ -102,8 +95,8 @@ document.getElementById('absenPulang').addEventListener('click', async () => {
         return;
     }
 
-    const tanggalHariIni = getLocalTanggalWITA();
-    const jamSekarang = getLocalJamWITA();
+    const tanggalHariIni = getLocalTanggalHariIni();
+    const jamSekarang = getJamLokalSekarang();
 
     const { error } = await client
         .from('absensi_announcer')
@@ -126,5 +119,5 @@ document.getElementById('absenPulang').addEventListener('click', async () => {
     }
 });
 
-// Load saat halaman pertama dibuka
+// Jalankan saat halaman dibuka
 loadAnnouncerList();
