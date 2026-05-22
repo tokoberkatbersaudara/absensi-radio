@@ -8,40 +8,45 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen p-4">
-  <h1 class="text-2xl font-bold mb-4 text-center">Rekap Absensi Announcer + Hitung Honor</h1>
+<body class="bg-gray-50 min-h-screen p-6">
+  <div class="max-w-6xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4 text-center">Rekap Absensi Announcer</h1>
 
-  <!-- Filter Bulan dan Search -->
-  <div class="mb-4 flex flex-wrap justify-center gap-2">
-    <input type="month" id="monthFilter" class="border rounded px-4 py-2" />
-    <input type="text" id="searchInput" placeholder="Cari nama atau tanggal..." class="border rounded px-4 py-2 w-64">
-    <button id="exportBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-      Export ke Excel
-    </button>
+    <div class="mb-4 flex flex-wrap gap-2 items-center justify-between">
+      <div class="flex gap-2">
+        <input type="month" id="monthFilter" class="border rounded px-3 py-2" />
+        <input type="text" id="searchInput" placeholder="Cari nama/tanggal…" class="border rounded px-3 py-2 w-64">
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-gray-600">Honor: <b>Rp 10.000/jam</b></span>
+        <button id="exportBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Export Excel</button>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto bg-white rounded-xl shadow">
+      <table id="rekapTable" class="min-w-full">
+        <thead class="bg-gray-100 text-sm">
+          <tr>
+            <th class="px-4 py-3 text-left">Nama</th>
+            <th class="px-4 py-3 text-left">Tanggal</th>
+            <th class="px-4 py-3 text-left">Jadwal Mulai</th>
+            <th class="px-4 py-3 text-left">Jadwal Selesai</th>
+            <th class="px-4 py-3 text-left">Jam Masuk</th>
+            <th class="px-4 py-3 text-left">Jam Pulang</th>
+            <th class="px-4 py-3 text-right">Durasi (Jam)</th>
+            <th class="px-4 py-3 text-right">Honor</th>
+          </tr>
+        </thead>
+        <tbody id="rekapBody" class="text-sm"></tbody>
+        <tfoot>
+          <tr class="bg-gray-100 font-semibold">
+            <td colspan="7" class="px-4 py-3 text-right">Total Honor</td>
+            <td id="totalHonor" class="px-4 py-3 text-right">Rp 0</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
   </div>
-
-  <div class="overflow-x-auto">
-    <table class="min-w-full bg-white rounded shadow" id="rekapTable">
-      <thead class="bg-gray-200">
-        <tr>
-          <th class="px-4 py-2">Nama</th>
-          <th class="px-4 py-2">Tanggal</th>
-          <th class="px-4 py-2">Jam Masuk</th>
-          <th class="px-4 py-2">Jam Pulang</th>
-          <th class="px-4 py-2">Durasi (Jam)</th>
-          <th class="px-4 py-2">Honor</th>
-        </tr>
-      </thead>
-      <tbody id="rekapBody"></tbody>
-      <tfoot>
-        <tr class="bg-gray-200 font-bold">
-          <td colspan="5" class="px-4 py-2 text-right">Total Honor</td>
-          <td class="px-4 py-2" id="totalHonor">Rp 0</td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-
   <script src="admin.js"></script>
 </body>
 </html>

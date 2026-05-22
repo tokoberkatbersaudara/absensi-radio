@@ -1,115 +1,174 @@
-// admin.js FINAL FIX STABIL
-// Menampilkan jam sesuai jadwal_announcer, hitung honor 10rb/jam
-// Potong 1 jam jika melewati 18:00–19:00
+// ==============================
+// admin.js — Laporan dgn Jadwal + Toleransi (JOIN jadwal_announcer)
+// ==============================
 
-const supabaseUrl = 'https://nsbbipgztnqhyucftjjt.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYmJpcGd6dG5xaHl1Y2Z0amp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NTc5ODUsImV4cCI6MjA2NzAzMzk4NX0.74lnjRTG28EYbf6ui8mnBksJVL9BU3C8sXOYbl-m-tU';
-const client = supabase.createClient(supabaseUrl, supabaseKey);
+// Konfigurasi Supabase
+const SUPABASE_URL = 'https://nsbbipgztnqhyucftjjt.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYmJpcGd6dG5xaHl1Y2Z0amp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NTc5ODUsImV4cCI6MjA2NzAzMzk4NX0.74lnjRTG28EYbf6ui8mnBksJVL9BU3C8sXOYbl-m-tU';
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const tableBody = document.getElementById('rekapBody');
-const totalHonorEl = document.getElementById('totalHonor');
-const searchInput = document.getElementById('searchInput');
-const monthFilter = document.getElementById('monthFilter');
-const exportBtn = document.getElementById('exportBtn');
+// Elemen UI
+const bodyEl   = document.getElementById('rekapBody');
+const totalEl  = document.getElementById('totalHonor');
+const searchEl = document.getElementById('searchInput');
+const monthEl  = document.getElementById('monthFilter');
+const exportBtn= document.getElementById('exportBtn');
 
-async function loadData() {
-    const { data: absensi, error: errorAbsensi } = await client.from('absensi_announcer').select('*');
-    const { data: jadwal, error: errorJadwal } = await client.from('jadwal_announcer').select('*');
+// Konstanta
+const FEE_PER_HOUR   = 10000; // Rp 10.000/jam
+const TZ             = 'Asia/Makassar';
 
-    if (errorAbsensi) {
-        console.error('Error loading absensi:', errorAbsensi);
-        return;
+// Utils
+const rupiah = n => `Rp ${Math.round(n).toLocaleString('id-ID')}`;
+function formatTanggalIndo(isoDate){
+  return new Date(`${isoDate}T12:00:00`).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+}
+function toDayNameID(isoDate){
+  // pastikan pakai WITA
+  return new Intl.DateTimeFormat('id-ID',{weekday:'long', timeZone: TZ})
+    .format(new Date(`${isoDate}T12:00:00`));
+}
+function parseHMS(hms){
+  if(!hms) return null;
+  const [h,m,s='0']=hms.split(':').map(Number);
+  if([h,m,s].some(Number.isNaN)) return null;
+  return new Date(2000,0,1,h,m,s);
+}
+function diffHoursFloor(a,b){
+  if(!a||!b) return 0;
+  const ms=b-a;
+  if(ms<=0) return 0;
+  return Math.floor(ms/3600000);
+}
+
+// Hitung durasi berdasar irisan jadwal vs aktual
+// Rule: ambil yang lebih dalam = max(jam_jadwal_mulai, jam_masuk_actual) hingga min(jam_jadwal_selesai, jam_pulang_actual)
+function hitungDurasi(jMulaiStr, jSelesaiStr, masukStr, pulangStr){
+  const jMulai  = parseHMS(jMulaiStr);
+  const jSelesai= parseHMS(jSelesaiStr);
+  const masuk   = parseHMS(masukStr);
+  const pulang  = parseHMS(pulangStr);
+  if(!jMulai || !jSelesai || !masuk || !pulang) return 0;
+
+  // START: ambil yang lebih besar (max) antara jadwal mulai vs jam masuk actual
+  let start = masuk > jMulai ? masuk : jMulai;
+
+  // END: ambil yang lebih kecil (min) antara jadwal selesai vs jam pulang actual
+  let end = pulang < jSelesai ? pulang : jSelesai;
+
+  // Jika end <= start, durasi 0
+  if(end <= start) return 0;
+
+  // Hitung jam, tetap sesuai pembulatan jadwal (per jam)
+  const durationMs = end - start;
+  return Math.round(durationMs / 3600000); // bulatkan ke jam terdekat
+}
+
+// Load & Render
+async function loadData(){
+  try {
+    // tarik absensi
+    const { data: absensi, error: errA } = await client
+      .from('absensi_announcer')
+      .select('nama,tanggal,jam_masuk,jam_keluar')
+      .order('tanggal',{ascending:true})
+      .order('jam_masuk',{ascending:true});
+    if(errA) throw errA;
+
+    // tarik jadwal (nama, hari -> jam_mulai, jam_selesai)
+    const { data: jadwal, error: errJ } = await client
+      .from('jadwal_announcer')
+      .select('nama,hari,jam_mulai,jam_selesai');
+    if(errJ) throw errJ;
+
+    // indeks jadwal: key = nama__hari
+    const jadwalMap = new Map();
+    for(const j of jadwal){
+      const key = `${j.nama}__${j.hari}`;
+      jadwalMap.set(key, { jam_mulai: j.jam_mulai, jam_selesai: j.jam_selesai });
     }
-    if (errorJadwal) {
-        console.error('Error loading jadwal:', errorJadwal);
-        return;
+
+    renderTable(absensi || [], jadwalMap);
+  } catch(err) {
+    bodyEl.innerHTML = `<tr><td colspan="8" class="px-4 py-3 text-red-600">Error: ${err.message}</td></tr>`;
+    totalEl.textContent = rupiah(0);
+    console.error('LoadData Error:', err);
+  }
+}
+
+function renderTable(absensi, jadwalMap){
+  bodyEl.innerHTML = '';
+  let totalHonor = 0;
+
+  const q  = (searchEl.value || '').toLowerCase();
+  const ym = monthEl.value; // YYYY-MM
+
+  // dedup per nama+tanggal: ambil record dengan jam_keluar paling akhir
+  const lastByDay = new Map();
+  for(const r of absensi){
+    const key = `${r.nama}__${r.tanggal}`;
+    const curr = lastByDay.get(key);
+    if(!curr) { lastByDay.set(key, r); continue; }
+    if((r.jam_keluar||'') > (curr.jam_keluar||'')) lastByDay.set(key, r);
+  }
+
+  const rows = Array.from(lastByDay.values()).filter(r=>{
+    if(ym){
+      const [Y,M]=ym.split('-');
+      const d=new Date(`${r.tanggal}T12:00:00`);
+      if(d.getFullYear()!==+Y || (d.getMonth()+1)!==+M) return false;
     }
+    if(q && !r.nama.toLowerCase().includes(q) && !String(r.tanggal).includes(q)) return false;
+    return true;
+  });
 
-    renderTable(absensi, jadwal);
+  for(const r of rows){
+    const hari = toDayNameID(r.tanggal); // contoh: "Senin"
+    const sched = jadwalMap.get(`${r.nama}__${hari}`);
+    const jadwalMulai   = sched?.jam_mulai   || '-';
+    const jadwalSelesai = sched?.jam_selesai || '-';
+    const jamMasuk  = r.jam_masuk || '-';
+    const jamKeluar = r.jam_keluar|| '-';
+
+    let durasi = 0;
+    if(sched && jamMasuk!=='-' && jamKeluar!=='-'){
+      durasi = hitungDurasi(jadwalMulai, jadwalSelesai, jamMasuk, jamKeluar);
+    }
+    const honor = durasi * FEE_PER_HOUR;
+    totalHonor += honor;
+
+    const tr = document.createElement('tr');
+    tr.className = 'border-b hover:bg-gray-50';
+    tr.innerHTML = `
+      <td class="px-4 py-3">${r.nama}</td>
+      <td class="px-4 py-3">${formatTanggalIndo(r.tanggal)}</td>
+      <td class="px-4 py-3">${jadwalMulai}</td>
+      <td class="px-4 py-3">${jadwalSelesai}</td>
+      <td class="px-4 py-3">${jamMasuk}</td>
+      <td class="px-4 py-3">${jamKeluar}</td>
+      <td class="px-4 py-3 text-right">${durasi}</td>
+      <td class="px-4 py-3 text-right">${rupiah(honor)}</td>
+    `;
+    bodyEl.appendChild(tr);
+  }
+
+  totalEl.textContent = rupiah(totalHonor);
 }
 
-function renderTable(absensi, jadwal) {
-    tableBody.innerHTML = '';
-    let totalHonor = 0;
-    const searchQuery = searchInput.value.toLowerCase();
-    const selectedMonth = monthFilter.value; // format YYYY-MM
-
-    // Group absensi agar tidak double
-    const grouped = {};
-    absensi.forEach(item => {
-        if (!item.nama || !item.tanggal) return;
-        const key = `${item.nama}-${item.tanggal}`;
-        grouped[key] = { nama: item.nama, tanggal: item.tanggal };
-    });
-
-    Object.values(grouped).forEach(item => {
-        const nama = item.nama;
-        const tanggal = item.tanggal;
-        const itemDate = new Date(tanggal);
-
-        if (selectedMonth) {
-            const [year, month] = selectedMonth.split('-');
-            if (
-                itemDate.getFullYear().toString() !== year ||
-                (itemDate.getMonth() + 1).toString().padStart(2, '0') !== month
-            ) {
-                return;
-            }
-        }
-
-        if (searchQuery && !nama.toLowerCase().includes(searchQuery) && !tanggal.includes(searchQuery)) {
-            return;
-        }
-
-        const dayName = itemDate.toLocaleDateString('id-ID', { weekday: 'long' });
-
-        const jadwalHari = jadwal.find(j =>
-            j.nama.trim().toLowerCase() === nama.trim().toLowerCase() &&
-            j.hari.trim().toLowerCase() === dayName.trim().toLowerCase()
-        );
-
-        if (!jadwalHari) {
-            console.log(`Tidak ditemukan jadwal untuk ${nama} pada ${dayName}`);
-            return;
-        }
-
-        const jadwalMulai = new Date(`${tanggal}T${jadwalHari.jam_mulai}`);
-        const jadwalSelesai = new Date(`${tanggal}T${jadwalHari.jam_selesai}`);
-
-        let duration = (jadwalSelesai - jadwalMulai) / (1000 * 60 * 60);
-
-        const breakStart = new Date(`${tanggal}T18:00:00`);
-        const breakEnd = new Date(`${tanggal}T19:00:00`);
-        if (jadwalMulai < breakEnd && jadwalSelesai > breakStart) {
-            duration -= 1;
-        }
-
-        duration = Math.max(duration, 0);
-        const honor = duration * 10000;
-        totalHonor += honor;
-
-        const row = document.createElement('tr');
-        row.className = 'border-b';
-        row.innerHTML = `
-            <td class="px-4 py-2">${nama}</td>
-            <td class="px-4 py-2">${tanggal}</td>
-            <td class="px-4 py-2">${jadwalHari.jam_mulai}</td>
-            <td class="px-4 py-2">${jadwalHari.jam_selesai}</td>
-            <td class="px-4 py-2">${duration.toFixed(2)}</td>
-            <td class="px-4 py-2">Rp ${honor.toLocaleString()}</td>
-        `;
-        tableBody.appendChild(row);
-    });
-
-    totalHonorEl.innerText = `Rp ${totalHonor.toLocaleString()}`;
+// Export Excel
+function exportToExcel(){
+  const wb = XLSX.utils.table_to_book(document.getElementById('rekapTable'), { sheet: 'Rekap' });
+  XLSX.writeFile(wb, `Rekap_Absensi_${new Date().toISOString().split('T')[0]}.xlsx`);
 }
 
-function exportToExcel() {
-    const wb = XLSX.utils.table_to_book(document.getElementById('rekapTable'), { sheet: "Rekap" });
-    XLSX.writeFile(wb, `Rekap_Absensi_${new Date().toISOString().split('T')[0]}.xlsx`);
-}
-
-searchInput.addEventListener('input', loadData);
-monthFilter.addEventListener('change', loadData);
-exportBtn.addEventListener('click', () => exportToExcel());
-document.addEventListener('DOMContentLoaded', loadData);
+// Events
+document.addEventListener('DOMContentLoaded', ()=>{
+  // default ke bulan berjalan
+  const now=new Date();
+  const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  monthEl.value = ym;
+  loadData();
+});
+searchEl.addEventListener('input', loadData);
+monthEl.addEventListener('change', loadData);
+exportBtn.addEventListener('click', exportToExcel);
