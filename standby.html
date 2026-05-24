@@ -38,6 +38,11 @@
             return new Date().toLocaleTimeString("it-IT", { timeZone: TZ }); // HH:mm:ss
         }
 
+        function floorPerJam(hms) {
+            const [h] = hms.split(":").map(Number);
+            return `${String(h).padStart(2, "0")}:00:00`;
+        }
+
         // Jam realtime
         function updateClock() {
             const jam = new Date().toLocaleTimeString('id-ID', { 
@@ -86,20 +91,26 @@
 
             const tanggal = witaDate();
             const jamSekarang = witaTime();
+            const jamEfektif = floorPerJam(jamSekarang);
 
             try {
-                const { error } = await client
+                const { data, error } = await client
                     .from('absensi_announcer')
                     .update({
                         jam_keluar: jamSekarang,
+                        jam_keluar_efektif: jamEfektif,
                         catatan: 'Absen Pulang'
                     })
                     .eq('nama', nama)
-                    .eq('tanggal', tanggal);
+                    .eq('tanggal', tanggal)
+                    .select();
 
                 if (error) {
                     console.error('Supabase Error:', error);
                     showNotification('Gagal absen pulang: ' + error.message, false);
+                } else if (!data || data.length === 0) {
+                    console.error('Tidak ada data yang diupdate:', { nama, tanggal });
+                    showNotification('Gagal: Data absen masuk tidak ditemukan.', false);
                 } else {
                     showNotification('Absen Pulang berhasil!');
                     setTimeout(() => {
