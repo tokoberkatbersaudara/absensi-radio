@@ -89,28 +89,45 @@
                 return;
             }
 
-            const tanggal = witaDate();
             const jamSekarang = witaTime();
             const jamEfektif = floorPerJam(jamSekarang);
 
             try {
-                const { data, error } = await client
+                // Cari row terakhir milik announcer yang jam_keluar masih NULL
+                const { data: rows, error: findError } = await client
+                    .from('absensi_announcer')
+                    .select('id, tanggal')
+                    .eq('nama', nama)
+                    .is('jam_keluar', null)
+                    .order('tanggal', { ascending: false })
+                    .limit(1);
+
+                if (findError) {
+                    console.error('Supabase Error (find):', findError);
+                    showNotification('Gagal: ' + findError.message, false);
+                    return;
+                }
+
+                if (!rows || rows.length === 0) {
+                    showNotification('Tidak ada sesi absen masuk yang aktif.', false);
+                    return;
+                }
+
+                const rowId = rows[0].id;
+
+                // Update row yang ditemukan berdasarkan ID
+                const { error: updateError } = await client
                     .from('absensi_announcer')
                     .update({
                         jam_keluar: jamSekarang,
                         jam_keluar_efektif: jamEfektif,
                         catatan: 'Absen Pulang'
                     })
-                    .eq('nama', nama)
-                    .eq('tanggal', tanggal)
-                    .select();
+                    .eq('id', rowId);
 
-                if (error) {
-                    console.error('Supabase Error:', error);
-                    showNotification('Gagal absen pulang: ' + error.message, false);
-                } else if (!data || data.length === 0) {
-                    console.error('Tidak ada data yang diupdate:', { nama, tanggal });
-                    showNotification('Gagal: Data absen masuk tidak ditemukan.', false);
+                if (updateError) {
+                    console.error('Supabase Error (update):', updateError);
+                    showNotification('Gagal absen pulang: ' + updateError.message, false);
                 } else {
                     showNotification('Absen Pulang berhasil!');
                     setTimeout(() => {
