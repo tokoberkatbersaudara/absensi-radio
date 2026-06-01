@@ -3,39 +3,128 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Standby Jam Kerja</title>
+    <title>Standby - Khana 98.4 FM</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <style>
+        body { font-family: 'Segoe UI', system-ui, sans-serif; }
+        .script-card {
+            border-left: 4px solid #d97706;
+            transition: all 0.3s ease;
+        }
+        .script-card.done {
+            border-left-color: #22c55e;
+            background: rgba(34, 197, 94, 0.05);
+        }
+        .script-card.done .script-text {
+            opacity: 0.6;
+        }
+        .time-badge {
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+        }
+        .cek-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid #6b7280;
+            background: transparent;
+            flex-shrink: 0;
+        }
+        .cek-btn:hover:not(:disabled) {
+            border-color: #d97706;
+            background: rgba(217, 119, 6, 0.1);
+        }
+        .cek-btn.checked {
+            border-color: #22c55e;
+            background: #22c55e;
+        }
+        .cek-btn.checked:hover {
+            background: #16a34a;
+            border-color: #16a34a;
+        }
+        .cek-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .cek-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: white;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+    </style>
 </head>
-<body class="bg-black text-white flex flex-col items-center justify-center min-h-screen space-y-6">
+<body class="bg-gray-900 min-h-screen flex flex-col">
 
-    <h1 class="text-2xl text-center">Anda sudah absen masuk, selamat siaran.</h1>
-    <div id="jam" class="text-6xl font-mono"></div>
+    <!-- Top Bar -->
+    <div class="bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
+        <div>
+            <h1 class="text-orange-400 font-bold text-sm">KHANA 98.4 FM</h1>
+            <p id="displayNama" class="text-white text-lg font-semibold">Loading...</p>
+        </div>
+        <div class="text-right">
+            <div id="jam" class="text-4xl font-mono text-white">00:00:00</div>
+            <div class="text-gray-400 text-xs">WITA</div>
+        </div>
+    </div>
 
-    <input type="text" id="namaAnnouncer" placeholder="Nama Anda" class="border rounded px-4 py-2 text-black w-64 text-center" readonly />
+    <!-- Main Content -->
+    <div class="flex-1 max-w-3xl mx-auto w-full px-4 py-6 space-y-6">
 
-    <button id="absenPulang" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded">
-        Absen Pulang
-    </button>
+        <!-- Info -->
+        <div id="infoHari" class="text-gray-400 text-sm text-center">Loading...</div>
+
+        <!-- Iklan Section -->
+        <div id="iklanContainer">
+            <div class="text-center text-gray-500 py-8">Memuat iklan...</div>
+        </div>
+
+        <!-- Tombol Absen Pulang -->
+        <div class="text-center pt-4 border-t border-gray-700">
+            <button id="absenPulang" class="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-semibold shadow-lg">
+                Absen Pulang
+            </button>
+        </div>
+    </div>
 
     <!-- Notifikasi -->
     <div id="notification" class="fixed top-4 right-4 px-4 py-2 rounded shadow-md hidden"></div>
 
     <script>
+        // ==============================
         // Konfigurasi Supabase
+        // ==============================
         const SUPABASE_URL = 'https://nsbbipgztnqhyucftjjt.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zYmJpcGd6dG5xaHl1Y2Z0amp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NTc5ODUsImV4cCI6MjA2NzAzMzk4NX0.74lnjRTG28EYbf6ui8mnBksJVL9BU3C8sXOYbl-m-tU';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // ==============================
         // Timezone WITA
+        // ==============================
         const TZ = "Asia/Makassar";
 
         function witaDate() {
-            return new Date().toLocaleDateString("sv-SE", { timeZone: TZ }); // YYYY-MM-DD
+            return new Date().toLocaleDateString("sv-SE", { timeZone: TZ });
         }
 
         function witaTime() {
-            return new Date().toLocaleTimeString("it-IT", { timeZone: TZ }); // HH:mm:ss
+            return new Date().toLocaleTimeString("it-IT", { timeZone: TZ });
+        }
+
+        function hariWITA() {
+            return new Date().toLocaleDateString("id-ID", { timeZone: TZ, weekday: "long" });
+        }
+
+        function jamNow() {
+            return witaTime().slice(0, 5);
         }
 
         function floorPerJam(hms) {
@@ -45,11 +134,7 @@
 
         // Jam realtime
         function updateClock() {
-            const jam = new Date().toLocaleTimeString('id-ID', { 
-                timeZone: TZ,
-                hour12: false 
-            });
-            document.getElementById('jam').innerText = jam;
+            document.getElementById('jam').innerText = witaTime();
         }
         setInterval(updateClock, 1000);
         updateClock();
@@ -65,25 +150,132 @@
             }, 2000);
         }
 
-        // Load nama dari localStorage dan kunci input
-        const namaInput = document.getElementById('namaAnnouncer');
+        // Load nama dari localStorage
         const storedName = localStorage.getItem('announcerName');
+        const displayName = document.getElementById('displayNama');
 
         if (storedName) {
-            namaInput.value = storedName;
-            namaInput.readOnly = true;
+            displayName.innerText = storedName;
         } else {
-            namaInput.value = '';
-            namaInput.readOnly = true;
+            displayName.innerText = 'Tidak dikenal';
             showNotification('Nama tidak ditemukan. Silakan absen masuk dulu.', false);
             setTimeout(() => {
                 window.location.href = 'index.html';
             }, 3000);
         }
 
-        // Absen Pulang
+        // ==============================
+        // Fitur Iklan At Lips
+        // ==============================
+
+        async function loadIklan() {
+            const hari = hariWITA();
+            document.getElementById('infoHari').innerText = `${hari}, ${witaDate()}  |  ${witaTime()} WITA`;
+
+            const nama = storedName;
+            const container = document.getElementById('iklanContainer');
+            container.innerHTML = '<div class="text-center text-gray-500 py-8">Memuat iklan...</div>';
+
+            // Ambil iklan untuk hari ini
+            const { data: iklanList, error } = await client
+                .from('iklan_at_lips')
+                .select('*')
+                .eq('hari', hari)
+                .order('jam_tayang');
+
+            if (error || !iklanList || iklanList.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <div class="text-4xl mb-2">📭</div>
+                        <div>Tidak ada iklan untuk hari ini</div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Ambil iklan yang sudah dibaca hari ini oleh announcer ini
+            const { data: sudahDibaca } = await client
+                .from('laporan_bacaan_iklan')
+                .select('script_no, jam_tayang')
+                .eq('tanggal', witaDate())
+                .eq('nama_announcer', nama);
+
+            const sudahSet = new Set();
+            if (sudahDibaca) {
+                sudahDibaca.forEach(d => sudahSet.add(d.script_no + '-' + d.jam_tayang));
+            }
+
+            // Render
+            let html = `
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-white font-bold text-lg">📋 Iklan At Lips Hari Ini</h2>
+                    <span class="text-gray-400 text-sm">${iklanList.length} iklan</span>
+                </div>
+            `;
+
+            for (const iklan of iklanList) {
+                const key = iklan.script_no + '-' + iklan.jam_tayang;
+                const isDone = sudahSet.has(key);
+                const sudahJam = jamNow() >= iklan.jam_tayang;
+
+                html += `
+                    <div class="script-card bg-gray-800 rounded-lg p-4 mb-3 ${isDone ? 'hidden' : ''}" data-key="${key}">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="time-badge text-white text-base font-bold px-3 py-1.5 rounded">${iklan.jam_tayang}</span>
+                                    <span class="text-orange-300 font-bold text-lg">${iklan.judul}</span>
+                                </div>
+                                <div class="script-text text-gray-200 text-lg leading-relaxed">
+                                    ${iklan.isi}
+                                </div>
+                            </div>
+                            <div class="flex items-center pt-1">
+                                ${!sudahJam && !isDone
+                                    ? `<button class="cek-btn" disabled title="Tayang jam ${iklan.jam_tayang}">
+                                        <svg><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/></svg>
+                                       </button>`
+                                    : isDone
+                                        ? ``
+                                        : `<button onclick="tandaiBaca(${iklan.id}, '${iklan.hari}', '${iklan.jam_tayang}', ${iklan.script_no}, '${iklan.judul}')"
+                                            class="cek-btn" title="Tandai sudah dibaca">
+                                            <svg><polyline points="4,9 8,13 15,5"/></svg>
+                                           </button>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        async function tandaiBaca(id, hari, jamTayang, scriptNo, judul) {
+            const { error } = await client.from('laporan_bacaan_iklan').insert({
+                tanggal: witaDate(),
+                hari: hari,
+                jam_tayang: jamTayang,
+                script_no: scriptNo,
+                judul: judul,
+                nama_announcer: storedName,
+                status: 'sudah',
+                waktu_baca: new Date().toISOString()
+            });
+
+            if (error) {
+                showNotification('Gagal mencatat: ' + error.message, false);
+            } else {
+                showNotification('✅ ' + judul + ' — tercatat sudah dibaca!');
+                loadIklan();
+            }
+        }
+
+        // ==============================
+        // Absen Pulang (dari Tania)
+        // ==============================
         document.getElementById('absenPulang').addEventListener('click', async () => {
-            const nama = namaInput.value.trim();
+            const nama = storedName;
             if (!nama) {
                 showNotification('Nama tidak ditemukan, tidak dapat absen pulang.', false);
                 return;
@@ -103,7 +295,6 @@
                     .limit(1);
 
                 if (findError) {
-                    console.error('Supabase Error (find):', findError);
                     showNotification('Gagal: ' + findError.message, false);
                     return;
                 }
@@ -115,7 +306,6 @@
 
                 const rowId = rows[0].id;
 
-                // Update row yang ditemukan berdasarkan ID
                 const { error: updateError } = await client
                     .from('absensi_announcer')
                     .update({
@@ -126,7 +316,6 @@
                     .eq('id', rowId);
 
                 if (updateError) {
-                    console.error('Supabase Error (update):', updateError);
                     showNotification('Gagal absen pulang: ' + updateError.message, false);
                 } else {
                     showNotification('Absen Pulang berhasil!');
@@ -139,6 +328,12 @@
                 showNotification('Error: ' + err.message, false);
             }
         });
+
+        // ==============================
+        // Auto-refresh tiap 30 detik
+        // ==============================
+        loadIklan();
+        setInterval(loadIklan, 30000);
     </script>
 </body>
 </html>
